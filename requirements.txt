@@ -1,0 +1,35 @@
+# --- Core Data & Image Processing ---
+numpy==1.26.4
+pandas==2.2.0
+opencv-python-headless==4.9.0.80  # Optimized for cloud/server  
+Pillow==10.2.0
+
+# --- AI & Deep Learning Frameworks ---
+# Using PyTorch for Inference Optimization
+torch==2.2.0
+torchvision==0.17.0
+scikit-learn==1.4.0               # evaluation metrics & OOD detection logic
+
+# --- Real-Time API & Streaming ---
+# High-performance ASGI framework for low-latency inference
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.6.1
+python-multipart==0.0.6           # handling image uploads/streams
+
+# --- Cloud Infrastructure & Data Orchestration ---
+# AWS Ecosystem (Kinesis, S3, SageMaker)
+boto3==1.34.34
+# GCP Ecosystem (Pub/Sub, Vertex AI, Storage)
+google-cloud-pubsub==2.19.0
+google-cloud-storage==2.14.1
+
+# --- MLOps & Monitoring ---
+# For tracking system health and model drift
+prometheus-client==0.19.0
+python-dotenv==1.0.1              # Environment variable management
+requests==2.31.0
+
+# --- Development & Testing ---
+pytest==8.0.0
+black==24.1.1                     # Code formatting
