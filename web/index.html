@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentinel Cloud Vision | Nova Noir</title>
+    <link rel="stylesheet" href="theme.css">
+    <style>
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 250px 1fr 300px;
+            gap: 1rem;
+            padding: 1rem;
+            height: 100vh;
+        }
+        .stream-view {
+            background: #000;
+            border: 1px solid var(--primary-red);
+            position: relative;
+            overflow: hidden;
+        }
+        .stream-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 5px;
+            border-left: 2px solid var(--primary-red);
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-grid">
+        <!-- Sidebar: Model Selection -->
+        <aside class="nova-card">
+            <h2 style="color: var(--primary-red)">MODELS</h2>
+            <div id="model-list">
+                <!-- Admin controlled list -->
+                <div class="nova-card" style="margin-bottom: 0.5rem; cursor: pointer;">
+                    ResNet-50 (Active)
+                </div>
+                <div class="nova-card" style="margin-bottom: 0.5rem; opacity: 0.5;">
+                    YOLOv8 (Restricted)
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Stream View -->
+        <main class="stream-view">
+            <div class="stream-overlay">
+                LIVE FEED: HD-STREAM-01 <br>
+                <span style="color: var(--primary-red)">● RECORDING</span>
+            </div>
+            <!-- Canvas/Video for stream -->
+            <div style="display: flex; justify-content: center; align-items: center; height: 100%;">
+                <p style="color: var(--text-secondary)">[ INGESTING STREAM... ]</p>
+            </div>
+        </main>
+
+        <!-- Sidebar: Real-time Alerts -->
+        <section class="nova-card">
+            <h2 style="color: var(--primary-red)">ALERTS</h2>
+            <div id="alert-feed">
+                <!-- Dynamic alerts -->
+            </div>
+        </section>
+    </div>
+</body>
+</html>

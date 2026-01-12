@@ -1,0 +1,60 @@
+:root {
+  /* Core Colors */
+  --bg-dark: #0A0A0A;
+  --bg-surface: #121212;
+  --primary-red: #E63946;
+  --primary-red-glow: rgba(230, 57, 70, 0.4);
+  --text-primary: #F8F9FA;
+  --text-secondary: #ADB5BD;
+  --border-color: #333333;
+  
+  /* Nova Glow Effects */
+  --nova-glow: 0 0 10px var(--primary-red-glow), 0 0 20px rgba(230, 57, 70, 0.1);
+  --transition-speed: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+.nova-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 4px; /* Rigid edges */
+  padding: 1.5rem;
+  transition: all var(--transition-speed);
+}
+
+.nova-card:hover {
+  border-color: var(--primary-red);
+  box-shadow: var(--nova-glow);
+}
+
+.btn-primary {
+  background: var(--primary-red);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: opacity var(--transition-speed);
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+  box-shadow: 0 0 15px var(--primary-red);
+}
+
+.admin-badge {
+  color: var(--primary-red);
+  border: 1px solid var(--primary-red);
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
