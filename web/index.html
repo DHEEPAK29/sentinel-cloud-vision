@@ -35,49 +35,60 @@
 
 <body>
     <div class="dashboard-grid">
-        <!-- Sidebar: Model Selection -->
-        <aside class="nova-card">
-            <h2 style="color: var(--primary-red)">MODELS</h2>
-            <div id="model-list">
-                <!-- Admin controlled list -->
-                <div class="nova-card" style="margin-bottom: 0.5rem; cursor: pointer;">
-                    ResNet-50 (Active)
+        <!-- Sidebar: Models (Left) -->
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <aside class="nova-card">
+                <h2 style="color: var(--primary-red)">MODELS</h2>
+                <div id="model-list">
+                    <div class="nova-card" style="margin-bottom: 0.5rem; cursor: pointer;">
+                        ResNet-50 (Active)
+                    </div>
+                    <div class="nova-card" style="margin-bottom: 0.5rem; opacity: 0.5;">
+                        YOLOv8 (Restricted)
+                    </div>
                 </div>
-                <div class="nova-card" style="margin-bottom: 0.5rem; opacity: 0.5;">
-                    YOLOv8 (Restricted)
-                </div>
-            </div>
-        </aside>
+            </aside>
 
-        <aside class="nova-card">
-            <h2 style="color: var(--primary-red)">MODELS for dialogue</h2>
-            <div id="model-list">
-                <!-- Admin controlled list -->
-                <div class="nova-card" style="margin-bottom: 0.5rem; cursor: pointer;">
-                    BERT (Active)
+            <aside class="nova-card">
+                <h2 style="color: var(--primary-red)">MODELS for dialogue</h2>
+                <div id="model-list-dialogue">
+                    <div class="nova-card" style="margin-bottom: 0.5rem; cursor: pointer;">
+                        BERT (Active)
+                    </div>
+                    <div class="nova-card" style="margin-bottom: 0.5rem; opacity: 0.5;">
+                        ViL-BERT (Restricted)
+                    </div>
+                    <div class="nova-card" style="margin-bottom: 0.5rem; opacity: 0.5;">
+                        GPT (Restricted)
+                    </div>
                 </div>
-                <div class="nova-card" style="margin-bottom: 0.5rem; opacity: 0.5;">
-                    ViL-BERT (Restricted)
-                </div>
-                <div class="nova-card" style="margin-bottom: 0.5rem; opacity: 0.5;">
-                    GPT (Restricted)
-                </div>
-            </div>
-        </aside>
+            </aside>
+        </div>
 
-        <!-- Main Stream View -->
+        <!-- Main Stream View (Center) -->
         <main class="stream-view">
             <div class="stream-overlay">
                 LIVE FEED: HD-STREAM-01 <br>
                 <span style="color: var(--primary-red)">● RECORDING</span>
             </div>
             <!-- Canvas/Video for stream -->
-            <div style="display: flex; justify-content: center; align-items: center; height: 100%;">
-                <p style="color: var(--text-secondary)">[ INGESTING STREAM... ]</p>
+            <div id="stream-container"
+                style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; gap: 1rem;">
+                <video id="webcam-feed" autoplay playsinline
+                    style="max-width: 100%; max-height: 80%; display: none; border: 2px solid var(--primary-red);"></video>
+                <button id="start-camera-btn"
+                    style="background: var(--primary-red); color: #fff; border: none; padding: 10px 20px; cursor: pointer; font-size: 1rem; font-weight: bold;">
+                    START CAMERA
+                </button>
+                <button id="stop-camera-btn"
+                    style="background: #333; color: #fff; border: none; padding: 10px 20px; cursor: pointer; font-size: 1rem; font-weight: bold; display: none;">
+                    STOP CAMERA
+                </button>
+                <p id="camera-status" style="color: var(--text-secondary)">[ CAMERA INACTIVE ]</p>
             </div>
         </main>
 
-        <!-- Sidebar: Real-time Alerts & Video Generator -->
+        <!-- Sidebar: Real-time Alerts & Video Generator (Right) -->
         <section class="nova-card" style="display: flex; flex-direction: column; gap: 1rem;">
             <div>
                 <h2 style="color: var(--primary-red)">ALERTS</h2>
@@ -104,6 +115,81 @@
     </div>
 
     <script>
+        // Camera activation
+        const startCameraBtn = document.getElementById('start-camera-btn');
+        const stopCameraBtn = document.getElementById('stop-camera-btn');
+        const webcamFeed = document.getElementById('webcam-feed');
+        const cameraStatus = document.getElementById('camera-status');
+        const alertFeed = document.getElementById('alert-feed');
+        let detectionInterval = null;
+        let currentStream = null;
+
+        startCameraBtn.addEventListener('click', async () => {
+            try {
+                cameraStatus.textContent = '[ REQUESTING CAMERA ACCESS... ]';
+                cameraStatus.style.color = 'var(--primary-red)';
+
+                currentStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 1280, height: 720 },
+                    audio: false
+                });
+
+                webcamFeed.srcObject = currentStream;
+                webcamFeed.style.display = 'block';
+                startCameraBtn.style.display = 'none';
+                stopCameraBtn.style.display = 'block';
+                cameraStatus.textContent = '[ CAMERA ACTIVE ]';
+                cameraStatus.style.color = '#00ff00';
+
+                // Start polling vision module
+                detectionInterval = setInterval(async () => {
+                    try {
+                        const res = await fetch('http://localhost:8001/detect');
+                        const data = await res.json();
+
+                        if (data.detections && data.detections.length > 0) {
+                            const alert = document.createElement('div');
+                            alert.className = 'nova-card';
+                            alert.style.marginBottom = '0.5rem';
+                            alert.style.fontSize = '0.8rem';
+                            alert.innerHTML = `<strong>${data.timestamp}</strong><br>` +
+                                data.detections.map(d => `${d.label}: ${(d.score * 100).toFixed(0)}%`).join('<br>');
+                            alertFeed.prepend(alert);
+
+                            // Keep only last 5 alerts
+                            while (alertFeed.children.length > 5) {
+                                alertFeed.removeChild(alertFeed.lastChild);
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Vision module error:', err);
+                    }
+                }, 2000); // Poll every 2 seconds
+            } catch (error) {
+                console.error('Camera access error:', error);
+                cameraStatus.textContent = '[ CAMERA ACCESS DENIED ]';
+                cameraStatus.style.color = '#ff0000';
+            }
+        });
+
+        stopCameraBtn.addEventListener('click', () => {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+            }
+            if (detectionInterval) {
+                clearInterval(detectionInterval);
+                detectionInterval = null;
+            }
+            webcamFeed.srcObject = null;
+            webcamFeed.style.display = 'none';
+            stopCameraBtn.style.display = 'none';
+            startCameraBtn.style.display = 'block';
+            cameraStatus.textContent = '[ CAMERA INACTIVE ]';
+            cameraStatus.style.color = 'var(--text-secondary)';
+        });
+
+        // Video generator
         document.getElementById('generate-video-btn').addEventListener('click', async () => {
             const prompt = document.getElementById('video-prompt').value;
             if (!prompt) return;
