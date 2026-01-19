@@ -94,6 +94,10 @@
             <div style="text-align: center; font-size: 1.5rem; font-weight: bold; color: var(--primary-red);">
                 Sentinel Cloud Vision
             </div>
+            <div style="padding: 0 1rem;">
+                <input type="text" id="model-search" placeholder="Search models..."
+                    style="width: 100%; background: #000; color: #fff; border: 1px solid var(--primary-red); padding: 5px; box-sizing: border-box;">
+            </div>
             <div class="nova-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                     <h3 style="color: var(--primary-red); margin: 0;">MODELS</h3>
@@ -217,6 +221,21 @@
     </div>
 
     <script>
+        // Model Search Functionality
+        document.getElementById('model-search').addEventListener('input', function (e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const modelButtons = document.querySelectorAll('.model-list .nova-card1');
+
+            modelButtons.forEach(btn => {
+                const text = btn.querySelector('span').textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    btn.style.display = 'flex';
+                } else {
+                    btn.style.display = 'none';
+                }
+            });
+        });
+
         // Camera activation
         const startCameraBtn = document.getElementById('start-camera-btn');
         const stopCameraBtn = document.getElementById('stop-camera-btn');
