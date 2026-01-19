@@ -2,15 +2,60 @@ import cv2
 import numpy as np
 import os
 import tempfile
-from fastapi import FastAPI, HTTPException
+import hashlib
+import secrets
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 app = FastAPI(title="Sentinel Cloud Vision - Video Generator")
 
+# CORS for frontend integration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# --- Auth Models & Mock DB ---
+class User(BaseModel):
+    username: str
+    password: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
 class VideoRequest(BaseModel):
     prompt: str
+
+# Mock Database
+MOCK_USERS = {}
+ACTIVE_TOKENS = {}
+
+def get_password_hash(password: str):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+# --- Auth Endpoints ---
+@app.post("/auth/signup")
+async def signup(user: User):
+    if user.username in MOCK_USERS:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    MOCK_USERS[user.username] = get_password_hash(user.password)
+    return {"message": "User created successfully"}
+
+@app.post("/auth/login", response_model=TokenResponse)
+async def login(user: User):
+    stored_hash = MOCK_USERS.get(user.username)
+    if not stored_hash or stored_hash != get_password_hash(user.password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    token = secrets.token_hex(32)
+    ACTIVE_TOKENS[token] = user.username
+    return {"access_token": token}
 
 @app.post("/generate-video")
 async def generate_video(request: VideoRequest):

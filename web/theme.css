@@ -7,7 +7,7 @@
   --text-primary: #F8F9FA;
   --text-secondary: #ADB5BD;
   --border-color: #333333;
-  
+
   /* Nova Glow Effects */
   --nova-glow: 0 0 10px var(--primary-red-glow), 0 0 20px rgba(230, 57, 70, 0.1);
   --transition-speed: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -24,8 +24,8 @@ body {
 .nova-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-radius: 4px; /* Rigid edges */
-  padding: 1.5rem;
+  border-radius: 1px;
+  padding: 1rem;
   transition: all var(--transition-speed);
 }
 
