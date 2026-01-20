@@ -28,16 +28,24 @@ class WebcamStream:
     def __init__(self, src=0):
         self.stream = cv2.VideoCapture(src)
         if not self.stream.isOpened():
-            raise ValueError(f"Could not open webcam {src}")
+            print(f"Warning: Could not open webcam {src}. Using dummy stream.")
+            self.stream = None
         
     def get_frame(self):
+        if self.stream is None:
+            # Return dummy black frame with noise or text to indicate no camera
+            frame = np.zeros((480, 640, 3), dtype=np.uint8)
+            cv2.putText(frame, "NO CAMERA", (200, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            return frame
+
         ret, frame = self.stream.read()
         if not ret:
             return None
         return frame
 
     def release(self):
-        self.stream.release()
+        if self.stream:
+            self.stream.release()
 
 class ObjectDetector:
     """Handles object detection using torchvision's Faster R-CNN."""

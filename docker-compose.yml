@@ -21,6 +21,19 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  
+  # --- Edge: Vision Module (Inference) ---
+  vision-module:
+    build:
+      context: .
+      dockerfile: edge/Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - WEBCAM_INDEX=0
+      - DETECTION_THRESHOLD=0.7
+    # devices:
+    #   - /dev/video0:/dev/video0  # Uncomment if running on Linux with webcam
 
   # --- Inference: TorchServe / BentoML (Placeholder service) ---
   inference-engine:
