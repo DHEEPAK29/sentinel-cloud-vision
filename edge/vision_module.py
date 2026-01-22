@@ -72,7 +72,8 @@ class ObjectDetector:
     def get_labels(self, prediction):
         labels = [self.categories[i] for i in prediction['labels']]
         scores = prediction['scores'].tolist()
-        return list(zip(labels, scores))
+        boxes = prediction['boxes'].tolist()
+        return list(zip(labels, scores, boxes))
 
 # Global instances
 stream = None
@@ -108,7 +109,7 @@ async def detect_objects():
     frame_b64 = base64.b64encode(buffer).decode('utf-8')
     
     return {
-        "detections": [{"label": label, "score": score} for label, score in results],
+        "detections": [{"label": label, "score": score, "box": box} for label, score, box in results],
         "latency": round(latency, 3),
         "frame": frame_b64,
         "timestamp": time.strftime('%H:%M:%S')

@@ -34,7 +34,7 @@
         .nova-card1 {
             height: 100%;
             width: 100%;
-            font-family: 'Courier New', Courier, monospace;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
             font-weight: bold;
             font-size: 15px;
             align-items: center;
@@ -118,7 +118,7 @@
                     <button class="nova-card1" role="button" style="margin-bottom: 0.5rem; opacity: 0.5;">
                         <span>YOLOv8 (Restricted)</span>
                     </button>
-                    <button class="nova-card1" role="button"
+                    <button id="start-object-detection-btn" class="nova-card1" role="button"
                         style="margin-bottom: 0.5rem; color: white; border-radius: 3px; width: auto; cursor: pointer;">
                         <span>Start Capturing</span>
                     </button>
@@ -134,7 +134,7 @@
                     <button class="nova-card1" role="button" style="margin-bottom: 0.5rem; opacity: 0.5;">
                         <span>TCN-Sequence (Restricted)</span>
                     </button>
-                    <button class="nova-card1" role="button"
+                    <button id="start-tcn-btn" class="nova-card1" role="button"
                         style="margin-bottom: 0.5rem; color: white; border-radius: 7px; width: auto; cursor: pointer;">
                         <span>Start Capturing</span>
                     </button>
@@ -153,7 +153,7 @@
                     <button class="nova-card1" role="button" style="margin-bottom: 0.5rem; opacity: 0.5;">
                         <span>GPT (Restricted)</span>
                     </button>
-                    <button class="nova-card1" role="button"
+                    <button id="start-dialogue-btn" class="nova-card1" role="button"
                         style="margin-bottom: 0.5rem; color: white;border-radius: 7px; width: auto; cursor: pointer;">
                         <span>Start Capturing</span>
                     </button>
@@ -170,10 +170,13 @@
             <!-- Canvas/Video for stream -->
             <div id="stream-container"
                 style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%;">
+                <!-- Canvas for bounding boxes -->
+                <canvas id="detection-canvas"
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;"></canvas>
                 <video id="webcam-feed" autoplay playsinline
-                    style="max-width: 100%; max-height: 80%; display: none; border: 2px solid var(--primary-red);"></video>
+                    style="max-width: 100%; max-height: 80%; display: none; border: 2px solid var(--primary-red); position: relative; z-index: 1;"></video>
                 <button id="start-camera-btn"
-                    style="background: var(--primary-red); color: #fff; border: none; padding: 10px 20px; cursor: pointer; font-size: 1rem; font-weight: bold; border-radius: 5px;">
+                    style="background: var(--primary-red); color: #fff; border: none; padding: 10px 20px; cursor: pointer; font-size: 1rem; font-weight: bold; border-radius: 5px; z-index: 20;">
                     START CAMERA
                 </button>
                 <button id="stop-camera-btn"
@@ -186,6 +189,14 @@
                 <button id="select-file-btn"
                     style="background: var(--primary-red); color: #fff; border: none; padding: 10px 20px; cursor: pointer; font-size: 1rem; font-weight: bold; border-radius: 5px;">
                     SELECT FILE
+                </button>
+                <button id="connect-edge-btn"
+                    style="background: var(--primary-red); color: #fff; border: none; padding: 10px 20px; cursor: pointer; font-size: 1rem; font-weight: bold; border-radius: 5px; margin-top: 20px;">
+                    CONNECT TO EDGE DEVICE
+                </button>
+                <button id="connect-phone-btn"
+                    style="background: var(--primary-red); color: #fff; border: none; padding: 10px 20px; cursor: pointer; font-size: 1rem; font-weight: bold; border-radius: 5px; margin-top: 20px;">
+                    CONNECT TO PHONE CAMERA
                 </button>
                 <input type="file" id="file-input" accept="video/*" style="display: none;">
             </div>
@@ -240,15 +251,30 @@
         const startCameraBtn = document.getElementById('start-camera-btn');
         const stopCameraBtn = document.getElementById('stop-camera-btn');
         const selectFileBtn = document.getElementById('select-file-btn');
+        const connectEdgeBtn = document.getElementById('connect-edge-btn');
+        const connectPhoneBtn = document.getElementById('connect-phone-btn');
         const fileInput = document.getElementById('file-input');
         const webcamFeed = document.getElementById('webcam-feed');
         const cameraStatus = document.getElementById('camera-status');
         const streamOverlay = document.getElementById('stream-overlay');
         const alertFeed = document.getElementById('alert-feed');
+        const startObjectDetectionBtn = document.getElementById('start-object-detection-btn');
+        const startTcnBtn = document.getElementById('start-tcn-btn');
+        const startDialogueBtn = document.getElementById('start-dialogue-btn');
+        const detectionCanvas = document.getElementById('detection-canvas');
+        const ctx = detectionCanvas.getContext('2d');
         let detectionInterval = null;
         let currentStream = null;
 
-        startCameraBtn.addEventListener('click', async () => {
+
+        startObjectDetectionBtn.addEventListener('click', async () => {
+
+        }
+        )
+        startCameraBtn.addEventListener('click', startCamera);
+        startObjectDetectionBtn.addEventListener('click', startCamera);
+
+        async function startCamera() {
             try {
                 cameraStatus.textContent = '[ REQUESTING CAMERA ACCESS... ]';
                 cameraStatus.style.color = 'var(--primary-red)';
@@ -266,36 +292,70 @@
                 cameraStatus.textContent = '[ CAMERA ACTIVE ]';
                 cameraStatus.style.color = '#00ff00';
 
+                // Resize canvas to match video
+                webcamFeed.onloadedmetadata = () => {
+                    detectionCanvas.width = webcamFeed.videoWidth;
+                    detectionCanvas.height = webcamFeed.videoHeight;
+                    // Adjust canvas style size to match the displayed video size
+                    detectionCanvas.style.width = webcamFeed.clientWidth + 'px';
+                    detectionCanvas.style.height = webcamFeed.clientHeight + 'px';
+                };
+
                 // Start polling vision module
                 detectionInterval = setInterval(async () => {
                     try {
                         const res = await fetch('http://localhost:8001/detect');
                         const data = await res.json();
 
-                        if (data.detections && data.detections.length > 0) {
-                            const alert = document.createElement('div');
-                            alert.className = 'nova-card';
-                            alert.style.marginBottom = '0.5rem';
-                            alert.style.fontSize = '0.8rem';
-                            alert.innerHTML = `<strong>${data.timestamp}</strong><br>` +
-                                data.detections.map(d => `${d.label}: ${(d.score * 100).toFixed(0)}%`).join('<br>');
-                            alertFeed.prepend(alert);
+                        if (data.detections) {
+                            // Clear previous drawings
+                            ctx.clearRect(0, 0, detectionCanvas.width, detectionCanvas.height);
 
-                            // Keep only last 5 alerts
-                            while (alertFeed.children.length > 5) {
-                                alertFeed.removeChild(alertFeed.lastChild);
+                            // Re-scale canvas if video size changed (simple check)
+                            if (webcamFeed.videoWidth > 0 && (detectionCanvas.width !== webcamFeed.videoWidth || detectionCanvas.height !== webcamFeed.videoHeight)) {
+                                detectionCanvas.width = webcamFeed.videoWidth;
+                                detectionCanvas.height = webcamFeed.videoHeight;
+                            }
+
+                            if (data.detections.length > 0) {
+                                const latestAlert = document.createElement('div');
+                                latestAlert.className = 'nova-card';
+                                latestAlert.style.marginBottom = '0.5rem';
+                                latestAlert.style.fontSize = '0.8rem';
+                                latestAlert.innerHTML = `<strong>${data.timestamp}</strong><br>` +
+                                    data.detections.map(d => `${d.label}: ${(d.score * 100).toFixed(0)}%`).join('<br>');
+                                alertFeed.prepend(latestAlert);
+
+                                // Keep only last 5 alerts
+                                while (alertFeed.children.length > 5) {
+                                    alertFeed.removeChild(alertFeed.lastChild);
+                                }
+
+                                // Draw boxes
+                                data.detections.forEach(d => {
+                                    if (d.box && d.box.length === 4) {
+                                        const [x1, y1, x2, y2] = d.box;
+                                        ctx.strokeStyle = '#ff0000';
+                                        ctx.lineWidth = 3;
+                                        ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+                                        ctx.font = '16px Arial';
+                                        ctx.fillStyle = '#ff0000';
+                                        ctx.fillText(`${d.label} ${(d.score * 100).toFixed(0)}%`, x1, y1 - 5);
+                                    }
+                                });
                             }
                         }
                     } catch (err) {
                         console.error('Vision module error:', err);
                     }
-                }, 2000); // Poll every 2 seconds
+                }, 100); // Fast Poll for smoother UI
             } catch (error) {
                 console.error('Camera access error:', error);
                 cameraStatus.textContent = '[ CAMERA ACCESS DENIED ]';
                 cameraStatus.style.color = '#ff0000';
             }
-        });
+        }
 
         selectFileBtn.addEventListener('click', () => {
             fileInput.click();
