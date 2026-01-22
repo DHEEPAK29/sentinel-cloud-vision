@@ -267,12 +267,17 @@
         let currentStream = null;
 
 
-        startObjectDetectionBtn.addEventListener('click', async () => {
+        startCameraBtn.addEventListener('click', toggleCamera);
+        startObjectDetectionBtn.addEventListener('click', toggleCamera);
+        stopCameraBtn.addEventListener('click', stopCamera);
 
+        async function toggleCamera() {
+            if (currentStream) {
+                stopCamera();
+            } else {
+                startCamera();
+            }
         }
-        )
-        startCameraBtn.addEventListener('click', startCamera);
-        startObjectDetectionBtn.addEventListener('click', startCamera);
 
         async function startCamera() {
             try {
@@ -288,6 +293,12 @@
                 webcamFeed.style.display = 'block';
                 startCameraBtn.style.display = 'none';
                 stopCameraBtn.style.display = 'block';
+
+                // Update Start Capturing button to Stop Capturing
+                const btnSpan = startObjectDetectionBtn.querySelector('span');
+                if (btnSpan) btnSpan.textContent = "Stop Capturing";
+                startObjectDetectionBtn.style.backgroundColor = "#333";
+
                 streamOverlay.style.display = 'block';
                 cameraStatus.textContent = '[ CAMERA ACTIVE ]';
                 cameraStatus.style.color = '#00ff00';
@@ -412,7 +423,7 @@
             }
         }, 3000);
 
-        stopCameraBtn.addEventListener('click', () => {
+        function stopCamera() {
             if (currentStream) {
                 currentStream.getTracks().forEach(track => track.stop());
                 currentStream = null;
@@ -424,11 +435,20 @@
             webcamFeed.srcObject = null;
             webcamFeed.style.display = 'none';
             stopCameraBtn.style.display = 'none';
+
+            // Reset Start Capturing button
+            const btnSpan = startObjectDetectionBtn.querySelector('span');
+            if (btnSpan) btnSpan.textContent = "Start Capturing";
+            startObjectDetectionBtn.style.backgroundColor = ""; // Reset to CSS default
+
             streamOverlay.style.display = 'none';
             startCameraBtn.style.display = 'block';
             cameraStatus.textContent = '[ CAMERA INACTIVE ]';
             cameraStatus.style.color = 'var(--text-secondary)';
-        });
+
+            // Clear canvas
+            ctx.clearRect(0, 0, detectionCanvas.width, detectionCanvas.height);
+        }
 
         // Video generator
         document.getElementById('generate-video-btn').addEventListener('click', async () => {
