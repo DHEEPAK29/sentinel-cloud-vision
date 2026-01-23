@@ -124,7 +124,28 @@
                     </button>
                 </div>
             </div>
+            <section class="nova-card" style="display: flex; flex-direction: column; margin-top: 1rem;">
+                <h3 style="color: var(--primary-red)">FINETUNE STATION</h3>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <label style="color: #fff; font-size: 0.8rem;">Target Object:</label>
+                    <input type="text" id="target-object-input" placeholder="e.g. Red Helmet"
+                        style="background: #000; color: #fff; border: 1px solid var(--primary-red); padding: 5px;">
 
+                    <label style="color: #fff; font-size: 0.8rem;">Dataset (Zip/Img):</label>
+                    <input type="file" id="dataset-input" accept="image/*,.zip"
+                        style="background: #000; color: #fff; border: 1px solid var(--primary-red); padding: 5px;">
+
+                    <button id="start-finetune-btn"
+                        style="background: var(--primary-red); color: #fff; border: none; padding: 10px; cursor: pointer; font-weight: bold; margin-top: 5px;">
+                        START TRAINING
+                    </button>
+
+                    <div id="finetune-status"
+                        style="display: none; border-top: 1px solid #333; padding-top: 5px; margin-top: 5px; font-size: 0.8rem; color: #00ff00;">
+                        Training...
+                    </div>
+                </div>
+            </section>
             <div class="nova-card">
                 <h3 style="color: var(--primary-red); margin-bottom: 0.5rem;">TCN MODELS</h3>
                 <div id="model-list-tcn" class="model-list">
@@ -229,6 +250,9 @@
                 </div>
             </div>
         </section>
+
+
+        </section>
     </div>
 
     <script>
@@ -311,6 +335,7 @@
         });
         startObjectDetectionBtn.addEventListener('click', toggleCamera);
         stopCameraBtn.addEventListener('click', stopCamera);
+
 
         async function toggleCamera() {
             if (currentStream) {
@@ -529,6 +554,53 @@
                 btn.disabled = false;
             }
         });
+
+        // Advanced Finetuning Station Logic
+        const finetuneBtn = document.getElementById('start-finetune-btn');
+        if (finetuneBtn) {
+            finetuneBtn.addEventListener('click', async () => {
+                const targetObj = document.getElementById('target-object-input').value;
+                const datasetInput = document.getElementById('dataset-input');
+                const statusDiv = document.getElementById('finetune-status');
+
+                if (!targetObj) {
+                    alert("Please enter a target object name.");
+                    return;
+                }
+                if (!datasetInput.files.length) {
+                    alert("Please select a dataset file.");
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('target_object', targetObj);
+                formData.append('dataset', datasetInput.files[0]);
+
+                statusDiv.style.display = 'block';
+                statusDiv.textContent = "[ STATUS: INITIALIZING JAX/FLAX... ]";
+                statusDiv.style.color = 'var(--primary-red)';
+
+                try {
+                    const res = await fetch('http://localhost:8001/finetune', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+
+                    if (data.status === 'error') {
+                        statusDiv.textContent = "[ ERROR: " + data.message + " ]";
+                        statusDiv.style.color = '#ff0000';
+                    } else {
+                        statusDiv.innerHTML = `[ COMPLETE ]<br>Final Loss: ${data.result.final_loss?.toFixed(5)}<br>Steps: ${data.result.steps}`;
+                        statusDiv.style.color = '#00ff00';
+                    }
+                } catch (err) {
+                    console.error(err);
+                    statusDiv.textContent = "[ CONNECTION FAILED ]";
+                    statusDiv.style.color = '#ff0000';
+                }
+            });
+        }
     </script>
 </body>
 

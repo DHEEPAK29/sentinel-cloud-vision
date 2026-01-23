@@ -21,6 +21,17 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  # --- Web: Frontend (Nginx) ---
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - vision-module
+      - video-generator
   
   # --- Edge: Vision Module (Inference) ---
   vision-module:
@@ -35,6 +46,14 @@ services:
     # devices:
     #   - /dev/video0:/dev/video0  # Uncomment if running on Linux with webcam
 
+  # --- Video Generator: Generative AI Service ---
+  video-generator:
+    build:
+      context: ./serving
+      dockerfile: Dockerfile.video
+    ports:
+      - "8000:8000"
+
   # --- Inference: TorchServe / BentoML (Placeholder service) ---
   inference-engine:
     build: 
@@ -42,10 +61,11 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
+      - "8081:8081"
     environment:
       - MODEL_NAME=resnet50
     volumes:
-      - ./serving:/app
+      - ./serving:/home/model-server/model-store
 
   # --- Processing: Spark (Master & Worker) ---
   spark-master:

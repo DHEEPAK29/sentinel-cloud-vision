@@ -12,7 +12,20 @@ import base64
 import io
 import qrcode
 
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Form
+from fastapi.responses import StreamingResponse, HTMLResponse, Response
+import base64
+import io
+import qrcode
+import shutil
+
+# Check if jax_train is available (dependencies installed)
+try:
+    import jax_train
+    JAX_AVAILABLE = True
+except ImportError:
+    JAX_AVAILABLE = False
+    print("Warning: JAX/Flax dependencies not found. Finetuning will be disabled.")
 
 app = FastAPI(title="Sentinel Vision Module")
 
@@ -150,6 +163,21 @@ async def detect_objects():
         "frame": frame_b64,
         "timestamp": time.strftime('%H:%M:%S'),
         "source": "mobile" if (mobile_source and mobile_source.active) else "webcam"
+    }
+
+@app.post("/finetune")
+async def finetune_model(dataset: UploadFile = File(...), target_object: str = Form(...)):
+    if not JAX_AVAILABLE:
+        return {"status": "error", "message": "JAX/Flax libraries not installed on server."}
+    
+    contents = await dataset.read()
+    # model_name is implied or can be added back if needed, but user asked for target object
+    result = jax_train.run_finetuning(contents, target_object=target_object)
+    
+    return {
+        "target": target_object,
+        "result": result,
+        "message": f"Finetuning simulation complete for object: {target_object}"
     }
 
 @app.websocket("/mobile-stream")
