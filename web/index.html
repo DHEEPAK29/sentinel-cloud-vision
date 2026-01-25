@@ -124,7 +124,7 @@
                     </button>
                 </div>
             </div>
-            <section class="nova-card" style="display: flex; flex-direction: column; margin-top: 1rem;">
+            <section class="nova-card">
                 <h3 style="color: var(--primary-red)">FINETUNE STATION</h3>
                 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                     <label style="color: #fff; font-size: 0.8rem;">Target Object:</label>
@@ -134,12 +134,15 @@
                     <label style="color: #fff; font-size: 0.8rem;">Dataset (Zip/Img):</label>
                     <input type="file" id="dataset-input" accept="image/*,.zip"
                         style="background: #000; color: #fff; border: 1px solid var(--primary-red); padding: 5px;">
+                    <div id="dataset-dropzone"
+                        style="margin-top:5px; padding:20px; border:2px dashed var(--primary-red); text-align:center; color:#fff; cursor:pointer;">
+                        Drag & Drop dataset here or click to select
+                    </div>
 
-                    <button id="start-finetune-btn"
-                        style="background: var(--primary-red); color: #fff; border: none; padding: 10px; cursor: pointer; font-weight: bold; margin-top: 5px;">
-                        START TRAINING
+                    <button id="start-finetune-btn" class="nova-card1" role="button"
+                        style="margin-bottom: 0.5rem; color: white; border-radius: 7px; width: auto; cursor: pointer;">
+                        <span>START TRAINING</span>
                     </button>
-
                     <div id="finetune-status"
                         style="display: none; border-top: 1px solid #333; padding-top: 5px; margin-top: 5px; font-size: 0.8rem; color: #00ff00;">
                         Training...
@@ -601,6 +604,35 @@
                 }
             });
         }
+
+        // Drag & Drop handling for dataset
+        const dropzone = document.getElementById('dataset-dropzone');
+        const datasetInput = document.getElementById('dataset-input');
+
+        // Click on dropzone opens file selector
+        dropzone.addEventListener('click', () => datasetInput.click());
+
+        // Prevent default browser drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => {
+            dropzone.addEventListener(ev, e => e.preventDefault());
+        });
+
+        // Visual feedback on dragover
+        dropzone.addEventListener('dragover', () => dropzone.classList.add('dragover'));
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+
+        // When files are dropped, populate the hidden input
+        dropzone.addEventListener('drop', e => {
+            dropzone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length) {
+                const dt = new DataTransfer();
+                for (let i = 0; i < files.length; i++) dt.items.add(files[i]);
+                datasetInput.files = dt.files;
+                // Optional UI feedback
+                dropzone.textContent = `Selected ${files.length} file(s): ${files[0].name}`;
+            }
+        }); 
     </script>
 </body>
 
