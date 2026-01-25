@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse, HTMLResponse, Response
 import base64
 import io
 import qrcode
-
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Form
 from fastapi.responses import StreamingResponse, HTMLResponse, Response
 import base64
