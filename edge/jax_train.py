@@ -18,7 +18,7 @@ class CNN(nn.Module):
         x = x.reshape((x.shape[0], -1))  # flatten
         x = nn.Dense(features=256)(x)
         x = nn.relu(x)
-        x = nn.Dense(features=10)(x) # 10 dummy classes
+        x = nn.Dense(features=10)(x) # 10 dummy classes 
         return x
 
 def create_train_state(rng, learning_rate, input_shape):

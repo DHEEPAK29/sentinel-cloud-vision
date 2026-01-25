@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
 
-app = FastAPI(title="Sentinel Cloud Vision - Video Generator")
+app = FastAPI(title="Sentinel Cloud Vision")
 
 # CORS for frontend integration
 app.add_middleware(
