@@ -18,6 +18,10 @@ import base64
 import io
 import qrcode
 import shutil
+import sqlite3
+import json
+from pathlib import Path
+from datetime import datetime
 
 # Check if jax_train is available (dependencies installed)
 try:
@@ -126,6 +130,22 @@ async def startup_event():
     stream = WebcamStream(src=WEBCAM_INDEX)
     mobile_source = MobileFrameSource()
     detector = ObjectDetector(threshold=DETECTION_THRESHOLD)
+    # Ensure finetune storage directory exists
+    FINETUNE_DIR = Path("finetuned_models")
+    FINETUNE_DIR.mkdir(exist_ok=True)
+    # Initialize SQLite DB
+    DB_PATH = Path("finetune.db")
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("""CREATE TABLE IF NOT EXISTS finetune_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        target_object TEXT,
+        dataset_path TEXT,
+        result_path TEXT,
+        timestamp TEXT
+    )""")
+    conn.commit()
+    conn.close()
 
 @app.get("/detect")
 async def detect_objects():
@@ -171,14 +191,122 @@ async def finetune_model(dataset: UploadFile = File(...), target_object: str = F
         return {"status": "error", "message": "JAX/Flax libraries not installed on server."}
     
     contents = await dataset.read()
-    # model_name is implied or can be added back if needed, but user asked for target object
+    
+    # Save dataset file locally
+    FINETUNE_DIR = Path("finetuned_models")
+    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    dataset_filename = f"{timestamp_str}_{target_object}{Path(dataset.filename).suffix}"
+    dataset_path = FINETUNE_DIR / dataset_filename
+    with open(dataset_path, "wb") as f:
+        f.write(contents)
+
+    # Run finetuning
     result = jax_train.run_finetuning(contents, target_object=target_object)
+    
+    # Save result JSON locally
+    result_path = FINETUNE_DIR / f"{timestamp_str}_{target_object}_result.json"
+    with open(result_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, indent=4)
+
+    # Record in DB
+    DB_PATH = Path("finetune.db")
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO finetune_requests (target_object, dataset_path, result_path, timestamp) VALUES (?,?,?,?)",
+        (target_object, str(dataset_path), str(result_path), timestamp_str)
+    )
+    conn.commit()
+    conn.close()
     
     return {
         "target": target_object,
+        "dataset_saved": str(dataset_path),
+        "result_saved": str(result_path),
         "result": result,
-        "message": f"Finetuning simulation complete for object: {target_object}"
+        "message": f"Finetuning complete and saved locally for: {target_object}"
     }
+
+@app.get("/admin/data")
+async def get_admin_data():
+    """Fetch all finetune records from DB."""
+    DB_PATH = Path("finetune.db")
+    if not DB_PATH.exists():
+        return []
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("SELECT * FROM finetune_requests ORDER BY id DESC")
+    rows = c.fetchall()
+    data = [dict(row) for row in rows]
+    conn.close()
+    return data
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_console():
+    return """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Nova Admin Console | Finetune Logs</title>
+        <style>
+            body { background: #0a0a0a; color: #f8f9fa; font-family: 'Inter', sans-serif; padding: 2rem; }
+            h1 { color: #E63946; border-bottom: 2px solid #E63946; padding-bottom: 10px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 2rem; background: #121212; }
+            th, td { padding: 12px; text-align: left; border: 1px solid #333; }
+            th { background: #E63946; color: white; }
+            tr:hover { background: #1a1a1a; }
+            .badge { background: #E63946; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
+            .path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: #ADB5BD; }
+        </style>
+    </head>
+    <body>
+        <h1>NOVA ADMIN CONSOLE - FINETUNE LOGS</h1>
+        <div id="loading">Loading requests...</div>
+        <table id="logs-table" style="display:none;">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Target Object</th>
+                    <th>Dataset Path</th>
+                    <th>Result Path</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody id="logs-body"></tbody>
+        </table>
+
+        <script>
+            async function loadData() {
+                try {
+                    const res = await fetch('/admin/data');
+                    const data = await res.json();
+                    const body = document.getElementById('logs-body');
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('logs-table').style.display = 'table';
+                    
+                    data.forEach(row => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${row.id}</td>
+                            <td><span class="badge">${row.target_object}</span></td>
+                            <td class="path">${row.dataset_path}</td>
+                            <td class="path">${row.result_path}</td>
+                            <td>${row.timestamp}</td>
+                        `;
+                        body.appendChild(tr);
+                    });
+                } catch (e) {
+                    document.getElementById('loading').textContent = "Failed to load data.";
+                }
+            }
+            loadData();
+        </script>
+    </body>
+    </html>
+    """
+
 
 @app.websocket("/mobile-stream")
 async def websocket_endpoint(websocket: WebSocket):
