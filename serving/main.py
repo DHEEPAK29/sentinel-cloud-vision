@@ -9,6 +9,8 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
+from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+from fastapi.responses import FileResponse, Response
 
 app = FastAPI(title="Sentinel Cloud Vision")
 
@@ -19,6 +21,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- Prometheus Metrics ---
+VIDEO_GEN_TOTAL = Counter("video_generation_total", "Total videos requested", ["status"])
+VIDEO_GEN_SUCCESS = Counter("video_generation_success", "Total videos successfully generated")
 
 # --- Auth Models & Mock DB ---
 class User(BaseModel):
@@ -63,6 +69,7 @@ async def generate_video(request: VideoRequest):
     Generates a mock video based on the prompt.
     In a real scenario, this would call a Generative AI model like Sora, Runway, or Stable Video Diffusion.
     """
+    VIDEO_GEN_TOTAL.labels(status="started").inc()
     try:
         # Create a temporary file for the video
         temp_dir = tempfile.gettempdir()
@@ -98,11 +105,18 @@ async def generate_video(request: VideoRequest):
         
         if not os.path.exists(file_path):
             raise HTTPException(status_code=500, detail="Failed to create video file")
-            
+        
+        VIDEO_GEN_TOTAL.labels(status="success").inc()
+        VIDEO_GEN_SUCCESS.inc()
         return FileResponse(file_path, media_type="video/mp4", filename="stable_diffusion_video.mp4")
         
     except Exception as e:
+        VIDEO_GEN_TOTAL.labels(status="error").inc()
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/metrics")
+async def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 @app.get("/")
 async def root():

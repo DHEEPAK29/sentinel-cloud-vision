@@ -22,6 +22,7 @@ import sqlite3
 import json
 from pathlib import Path
 from datetime import datetime
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 
 # Check if jax_train is available (dependencies installed)
 try:
@@ -39,6 +40,17 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# --- Prometheus Metrics ---
+REQUEST_COUNT = Counter(
+    "vision_request_count", "Total number of vision inference requests", ["method", "endpoint", "status"]
+)
+INFERENCE_LATENCY = Histogram(
+    "vision_inference_latency_seconds", "Latency of object detection inference", ["source"]
+)
+FINETUNE_COUNT = Counter(
+    "vision_finetune_total", "Total number of finetuning jobs started"
 )
 
 class WebcamStream:
@@ -160,14 +172,20 @@ async def detect_objects():
     
     if frame is None:
         frame = stream.get_frame()
-        
-
+    
+    if frame is None:
+        REQUEST_COUNT.labels(method="GET", endpoint="/detect", status="400").inc()
         return {"error": "Failed to capture frame"}
     
     # Detect objects
     start_time = time.time()
-    prediction = detector.detect(frame)
+    source_type = "mobile" if (mobile_source and mobile_source.active) else "webcam"
+    with INFERENCE_LATENCY.labels(source=source_type).time():
+        prediction = detector.detect(frame)
+    
     latency = time.time() - start_time
+    
+    REQUEST_COUNT.labels(method="GET", endpoint="/detect", status="200").inc()
     
     results = detector.get_labels(prediction)
     
@@ -187,6 +205,7 @@ async def detect_objects():
 
 @app.post("/finetune")
 async def finetune_model(dataset: UploadFile = File(...), target_object: str = Form(...)):
+    FINETUNE_COUNT.inc()
     if not JAX_AVAILABLE:
         return {"status": "error", "message": "JAX/Flax libraries not installed on server."}
     
@@ -249,35 +268,157 @@ async def admin_console():
     <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <title>Nova Admin Console | Finetune Logs</title>
+        <title>Nova Sentinel | Admin Command Center</title>
         <style>
-            body { background: #0a0a0a; color: #f8f9fa; font-family: 'Inter', sans-serif; padding: 2rem; }
-            h1 { color: #E63946; border-bottom: 2px solid #E63946; padding-bottom: 10px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 2rem; background: #121212; }
-            th, td { padding: 12px; text-align: left; border: 1px solid #333; }
-            th { background: #E63946; color: white; }
-            tr:hover { background: #1a1a1a; }
-            .badge { background: #E63946; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; }
-            .path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: #ADB5BD; }
+            :root {
+                --primary-red: #ff0000;
+                --bg-dark: #0a0a0a;
+                --card-bg: #121212;
+                --text-main: #f8f9fa;
+                --accent: #E63946;
+            }
+            body { 
+                background: var(--bg-dark); 
+                color: var(--text-main); 
+                font-family: 'Outfit', 'Inter', sans-serif; 
+                margin: 0;
+                padding: 20px;
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+            }
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 2px solid var(--primary-red);
+                padding-bottom: 15px;
+            }
+            h1 { margin: 0; color: var(--primary-red); letter-spacing: 2px; font-size: 1.8rem; }
+            .nav-tabs {
+                display: flex;
+                gap: 10px;
+            }
+            .tab-btn {
+                background: transparent;
+                border: 1px solid var(--primary-red);
+                color: var(--primary-red);
+                padding: 8px 16px;
+                cursor: pointer;
+                transition: 0.3s;
+                font-weight: bold;
+            }
+            .tab-btn.active {
+                background: var(--primary-red);
+                color: white;
+            }
+            .content-section {
+                display: none;
+                animation: fadeIn 0.5s ease-in-out;
+            }
+            .content-section.active { display: block; }
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+            
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 20px;
+                margin-top: 20px;
+            }
+            .nova-card {
+                background: var(--card-bg);
+                border: 1px solid #333;
+                padding: 20px;
+                border-radius: 4px;
+                position: relative;
+            }
+            .nova-card::before {
+                content: '';
+                position: absolute;
+                top: 0; left: 0; width: 4px; height: 100%;
+                background: var(--primary-red);
+            }
+            
+            table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+            th, td { padding: 12px; text-align: left; border: 1px solid #222; }
+            th { background: #1a1a1a; color: var(--primary-red); font-size: 0.9rem; text-transform: uppercase; }
+            tr:hover { background: #181818; }
+            .badge { background: var(--primary-red); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+            .path { font-family: 'Courier New', monospace; font-size: 0.8rem; color: #888; }
+            
+            .monitor-frame {
+                width: 100%;
+                height: 600px;
+                border: 1px solid #333;
+                background: #000;
+            }
+            .monitor-links {
+                display: flex;
+                gap: 15px;
+                margin-bottom: 15px;
+            }
+            .monitor-link {
+                color: #00ff00;
+                text-decoration: none;
+                font-family: monospace;
+                border: 1px solid #00ff00;
+                padding: 5px 10px;
+                font-size: 0.9rem;
+            }
+            .monitor-link:hover { background: #00ff00; color: #000; }
         </style>
     </head>
     <body>
-        <h1>NOVA ADMIN CONSOLE - FINETUNE LOGS</h1>
-        <div id="loading">Loading requests...</div>
-        <table id="logs-table" style="display:none;">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Target Object</th>
-                    <th>Dataset Path</th>
-                    <th>Result Path</th>
-                    <th>Timestamp</th>
-                </tr>
-            </thead>
-            <tbody id="logs-body"></tbody>
-        </table>
+        <div class="header">
+            <h1>NOVA SENTINEL // COMMAND CENTER</h1>
+            <div class="nav-tabs">
+                <button class="tab-btn active" onclick="showTab('logs')">FINETUNE LOGS</button>
+                <button class="tab-btn" onclick="showTab('metrics')">SYSTEM MONITOR</button>
+            </div>
+        </div>
+
+        <div id="logs" class="content-section active">
+            <div class="nova-card">
+                <h3>ACTIVE TRAINING REQUESTS</h3>
+                <div id="loading">Initialising data stream...</div>
+                <table id="logs-table" style="display:none;">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Target Object</th>
+                            <th>Storage Path</th>
+                            <th>Result Artifact</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="metrics" class="content-section">
+            <div class="nova-card">
+                <h3>REAL-TIME METRICS & TELEMETRY</h3>
+                <div class="monitor-links">
+                    <a href="http://localhost:9090" target="_blank" class="monitor-link">> PROMETHEUS_UI</a>
+                    <a href="http://localhost:3000" target="_blank" class="monitor-link">> GRAFANA_DASHBOARD</a>
+                    <a href="/metrics" target="_blank" class="monitor-link">> RAW_METRICS</a>
+                </div>
+                <iframe src="http://localhost:3000/d-solo/sentinel-dash?refresh=5s&theme=dark" class="monitor-frame" frameborder="0"></iframe>
+                <p style="font-size: 0.8rem; color: #555; margin-top: 10px;">
+                    * Note: Grafana iframe requires a predefined dashboard 'sentinel-dash'. If not found, please access the main UI via the link above.
+                </p>
+            </div>
+        </div>
 
         <script>
+            function showTab(tabId) {
+                document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById(tabId).classList.add('active');
+                event.target.classList.add('active');
+            }
+
             async function loadData() {
                 try {
                     const res = await fetch('/admin/data');
@@ -285,6 +426,7 @@ async def admin_console():
                     const body = document.getElementById('logs-body');
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('logs-table').style.display = 'table';
+                    body.innerHTML = '';
                     
                     data.forEach(row => {
                         const tr = document.createElement('tr');
@@ -298,14 +440,21 @@ async def admin_console():
                         body.appendChild(tr);
                     });
                 } catch (e) {
-                    document.getElementById('loading').textContent = "Failed to load data.";
+                    document.getElementById('loading').textContent = "DATA_STREAM_ERROR: Failed to connect to backend.";
                 }
             }
             loadData();
+            // Refresh logs every 30s
+            setInterval(loadData, 30000);
         </script>
     </body>
     </html>
     """
+
+
+@app.get("/metrics")
+async def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 @app.websocket("/mobile-stream")
