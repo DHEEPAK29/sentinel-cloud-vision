@@ -78,3 +78,38 @@ def run_finetuning(image_bytes, target_object="unknown", steps=5):
         return {"status": "success", "final_loss": losses[-1], "steps": steps}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+def run_inference(image_bytes):
+    """
+    Performs JAX inference on the provided image.
+    """
+    try:
+        # Preprocess image
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if img is None:
+             return {"status": "error", "message": "Could not decode image"}
+        
+        img = cv2.resize(img, (28, 28))
+        img = img / 255.0
+        img = np.expand_dims(img, axis=0) # Add batch dim
+        
+        # Initialize (in a real app, we'd load saved weights)
+        rng = jax.random.PRNGKey(0)
+        cnn = CNN()
+        params = cnn.init(rng, jnp.ones([1, 28, 28, 3]))['params']
+        
+        # Inference
+        logits = cnn.apply({'params': params}, jnp.array(img))
+        probs = jax.nn.softmax(logits)
+        predicted_class = int(jnp.argmax(probs))
+        confidence = float(jnp.max(probs))
+        
+        return {
+            "status": "success",
+            "class_id": predicted_class,
+            "confidence": confidence,
+            "backend": "jax/flax"
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

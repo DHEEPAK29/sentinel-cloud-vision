@@ -11,6 +11,13 @@ from pydantic import BaseModel
 from typing import Optional, List
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
 from fastapi.responses import FileResponse, Response
+from fastapi import UploadFile, File
+import sys
+import os
+
+# Ensure edge module can be imported
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from edge.jax_train import run_inference
 
 app = FastAPI(title="Sentinel Cloud Vision")
 
@@ -118,9 +125,23 @@ async def generate_video(request: VideoRequest):
 async def metrics():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
+@app.post("/jax-inference")
+async def jax_inference(file: UploadFile = File(...)):
+    """
+    Endpoint for JAX-based inference.
+    """
+    try:
+        image_bytes = await file.read()
+        result = run_inference(image_bytes)
+        if result["status"] == "error":
+            raise HTTPException(status_code=400, detail=result["message"])
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/")
 async def root():
-    return {"status": "Video Generator Service is running", "endpoints": ["/generate-video"]}
+    return {"status": "Vision Services is running", "endpoints": ["/generate-video", "/jax-inference"]}
 
 if __name__ == "__main__":
     import uvicorn
