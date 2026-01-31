@@ -18,6 +18,7 @@ import os
 # Ensure edge module can be imported
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from edge.jax_train import run_inference
+from edge.preprocess import run_pipeline
 
 app = FastAPI(title="Sentinel Cloud Vision")
 
@@ -139,9 +140,20 @@ async def jax_inference(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/preprocess")
+async def preprocess_image(file: UploadFile = File(...)):
+    try:
+        image_bytes = await file.read()
+        result = run_pipeline(image_bytes)
+        if result["status"] == "error":
+            raise HTTPException(status_code=400, detail=result["message"])
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/")
 async def root():
-    return {"status": "Vision Services is running", "endpoints": ["/generate-video", "/jax-inference"]}
+    return {"status": "Vision Services is running", "endpoints": ["/generate-video", "/jax-inference", "/preprocess"]}
 
 if __name__ == "__main__":
     import uvicorn

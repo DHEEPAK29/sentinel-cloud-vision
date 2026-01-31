@@ -149,6 +149,21 @@
                     </div>
                 </div>
             </section>
+            <section class="nova-card">
+                <h3 style="color: var(--primary-red)">PREPROCESS STATION</h3>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <label style="color: #fff; font-size: 0.8rem;">Upload Image for Assessment:</label>
+                    <input type="file" id="preprocess-input" accept="image/*"
+                        style="background: #000; color: #fff; border: 1px solid var(--primary-red); padding: 5px;">
+                    <button id="run-preprocess-btn" class="nova-card1" role="button"
+                        style="margin-bottom: 0.5rem; color: white; border-radius: 7px; width: auto; cursor: pointer;">
+                        <span>RUN PIPELINE</span>
+                    </button>
+                    <div id="preprocess-result"
+                        style="display: none; border-top: 1px solid #333; padding-top: 5px; margin-top: 5px; font-size: 0.8rem; color: #00ff00; word-break: break-all;">
+                    </div>
+                </div>
+            </section>
             <div class="nova-card">
                 <h3 style="color: var(--primary-red); margin-bottom: 0.5rem;">TCN MODELS</h3>
                 <div id="model-list-tcn" class="model-list">
@@ -636,7 +651,52 @@
                 // Optional UI feedback
                 dropzone.textContent = `Selected ${files.length} file(s): ${files[0].name}`;
             }
-        }); 
+        });
+
+        // Preprocess Station Logic
+        const preprocessBtn = document.getElementById('run-preprocess-btn');
+        if (preprocessBtn) {
+            preprocessBtn.addEventListener('click', async () => {
+                const input = document.getElementById('preprocess-input');
+                const resultDiv = document.getElementById('preprocess-result');
+
+                if (!input.files.length) {
+                    alert("Please select an image file.");
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('file', input.files[0]);
+
+                resultDiv.style.display = 'block';
+                resultDiv.textContent = "[ STATUS: PROCESSING... ]";
+                resultDiv.style.color = 'var(--primary-red)';
+
+                try {
+                    const res = await fetch('http://localhost:8000/preprocess', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+
+                    if (data.status === 'error') {
+                        resultDiv.textContent = "[ ERROR: " + data.message + " ]";
+                        resultDiv.style.color = '#ff0000';
+                    } else {
+                        resultDiv.innerHTML = `[ COMPLETE ]<br>
+                        Dimensions: ${data.original_dimensions.width}x${data.original_dimensions.height}<br>
+                        Aspect Ratio: ${data.original_dimensions.aspect_ratio.toFixed(2)}<br>
+                        Processed Shape: ${data.processed_shape.join('x')}<br>
+                        Message: ${data.message}`;
+                        resultDiv.style.color = '#00ff00';
+                    }
+                } catch (err) {
+                    console.error(err);
+                    resultDiv.textContent = "[ CONNECTION FAILED ]";
+                    resultDiv.style.color = '#ff0000';
+                }
+            });
+        }
     </script>
 </body>
 
