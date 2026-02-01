@@ -75,7 +75,12 @@ def run_finetuning(image_bytes, target_object="unknown", steps=5):
             state, loss = train_step(state, batch)
             losses.append(float(loss))
             
-        return {"status": "success", "final_loss": losses[-1], "steps": steps}
+        return {
+            "status": "success", 
+            "final_loss": losses[-1], 
+            "steps": steps,
+            "params": state.params  # Return the trained parameters
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 

@@ -23,10 +23,13 @@ import json
 from pathlib import Path
 from datetime import datetime
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+from fastapi.responses import FileResponse
+import pickle # Used for serializing Flax params safely
 
 # Check if jax_train is available (dependencies installed)
 try:
     import jax_train
+    import flax.serialization as serialization
     JAX_AVAILABLE = True
 except ImportError:
     JAX_AVAILABLE = False
@@ -154,8 +157,14 @@ async def startup_event():
         target_object TEXT,
         dataset_path TEXT,
         result_path TEXT,
+        model_path TEXT,
         timestamp TEXT
     )""")
+    # Migration: Add model_path if it doesn't exist
+    try:
+        c.execute("ALTER TABLE finetune_requests ADD COLUMN model_path TEXT")
+    except sqlite3.OperationalError:
+        pass # Already exists
     conn.commit()
     conn.close()
 
@@ -222,6 +231,17 @@ async def finetune_model(dataset: UploadFile = File(...), target_object: str = F
     # Run finetuning
     result = jax_train.run_finetuning(contents, target_object=target_object)
     
+    # Save model weights if success
+    model_path = None
+    if result.get("status") == "success" and "params" in result:
+        params = result.pop("params") # Remove from result dict for JSON serialization
+        model_filename = f"{timestamp_str}_{target_object}_model.pth"
+        model_path = FINETUNE_DIR / model_filename
+        
+        # Save params as a .pth file using torch (standard for model weights)
+        # Even though these are JAX params, saving as .pth is the requested format
+        torch.save(params, model_path)
+
     # Save result JSON locally
     result_path = FINETUNE_DIR / f"{timestamp_str}_{target_object}_result.json"
     with open(result_path, "w", encoding="utf-8") as f:
@@ -232,8 +252,8 @@ async def finetune_model(dataset: UploadFile = File(...), target_object: str = F
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute(
-        "INSERT INTO finetune_requests (target_object, dataset_path, result_path, timestamp) VALUES (?,?,?,?)",
-        (target_object, str(dataset_path), str(result_path), timestamp_str)
+        "INSERT INTO finetune_requests (target_object, dataset_path, result_path, model_path, timestamp) VALUES (?,?,?,?,?)",
+        (target_object, str(dataset_path), str(result_path), str(model_path) if model_path else None, timestamp_str)
     )
     conn.commit()
     conn.close()
@@ -242,9 +262,24 @@ async def finetune_model(dataset: UploadFile = File(...), target_object: str = F
         "target": target_object,
         "dataset_saved": str(dataset_path),
         "result_saved": str(result_path),
+        "model_saved": str(model_path) if model_path else None,
+        "download_url": f"http://localhost:8001/download-model/{timestamp_str}_{target_object}" if model_path else None,
         "result": result,
         "message": f"Finetuning complete and saved locally for: {target_object}"
     }
+
+@app.get("/download-model/{model_id}")
+async def download_model(model_id: str):
+    """Download the finetuned model weights (.pth)."""
+    model_path = Path("finetuned_models") / f"{model_id}_model.pth"
+    if not model_path.exists():
+        return {"status": "error", "message": "Model file not found."}
+    
+    return FileResponse(
+        path=model_path,
+        filename=f"{model_id}_model.pth",
+        media_type='application/octet-stream'
+    )
 
 @app.get("/admin/data")
 async def get_admin_data():
@@ -387,7 +422,7 @@ async def admin_console():
                             <th>ID</th>
                             <th>Target Object</th>
                             <th>Storage Path</th>
-                            <th>Result Artifact</th>
+                            <th>Weights Artifact</th>
                             <th>Timestamp</th>
                         </tr>
                     </thead>
@@ -430,11 +465,16 @@ async def admin_console():
                     
                     data.forEach(row => {
                         const tr = document.createElement('tr');
+                        const downloadUrl = row.model_path ? `/download-model/${row.timestamp}_${row.target_object}` : '#';
+                        const downloadBtn = row.model_path ? 
+                            `<a href="${downloadUrl}" class="badge" style="text-decoration:none; background:#00ff00; color:#000;">DOWNLOAD_PTH</a>` : 
+                            '<span style="color:#555">N/A</span>';
+
                         tr.innerHTML = `
                             <td>${row.id}</td>
                             <td><span class="badge">${row.target_object}</span></td>
                             <td class="path">${row.dataset_path}</td>
-                            <td class="path">${row.result_path}</td>
+                            <td class="path">${downloadBtn}</td>
                             <td>${row.timestamp}</td>
                         `;
                         body.appendChild(tr);

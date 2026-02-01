@@ -613,7 +613,11 @@
                         statusDiv.textContent = "[ ERROR: " + data.message + " ]";
                         statusDiv.style.color = '#ff0000';
                     } else {
-                        statusDiv.innerHTML = `[ COMPLETE ]<br>Final Loss: ${data.result.final_loss?.toFixed(5)}<br>Steps: ${data.result.steps}`;
+                        let downloadHtml = '';
+                        if (data.download_url) {
+                            downloadHtml = `<br><a href="${data.download_url}" target="_blank" class="nova-card1" style="display:inline-block; width:auto; margin-top:10px; padding:5px 15px; background:#00ff00; color:#000; text-decoration:none; border-radius:5px;">DOWNLOAD MODEL (.PTH)</a>`;
+                        }
+                        statusDiv.innerHTML = `[ COMPLETE ]<br>Final Loss: ${data.result.final_loss?.toFixed(5)}<br>Steps: ${data.result.steps}${downloadHtml}`;
                         statusDiv.style.color = '#00ff00';
                     }
                 } catch (err) {
