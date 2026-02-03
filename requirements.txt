@@ -10,6 +10,23 @@ torch==2.2.0
 torchvision==0.17.0
 scikit-learn==1.4.0               # evaluation metrics & OOD detection logic
 
+# --- JAX/XLA Optimization Stack ---
+# JAX for high-performance ML with XLA compilation to LLVM IR
+jax[cuda12_pip]==0.4.23           # JAX with CUDA support (use jax[cpu] for CPU-only)
+jaxlib==0.4.23
+flax==0.7.5                       # Neural network library for JAX
+optax==0.1.9                      # Gradient processing and optimization for JAX
+
+# --- Model Export & Deployment ---
+# TFLite and ONNX conversion for on-device deployment
+tensorflow==2.15.0                # Required for TFLite conversion via jax2tf
+tf2onnx==1.16.1                   # ONNX export from TensorFlow models
+onnx==1.15.0                      # ONNX model format
+onnxruntime==1.16.3               # ONNX inference runtime
+
+# --- Visualization & Benchmarking ---
+matplotlib==3.8.2                 # Benchmark visualization
+
 # --- Real-Time API & Streaming ---
 # High-performance ASGI framework for low-latency inference
 fastapi==0.109.0
