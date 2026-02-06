@@ -151,6 +151,27 @@ async def preprocess_image(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class ChatRequest(BaseModel):
+    prompt: str
+    model: str = "llama3" # wuth exec 'ollama pull llama3'
+
+@app.post("/chat")
+async def chat_with_llm(request: ChatRequest):
+    try:
+        # Connect to Ollama's local REST API
+        response = requests.post(
+            "http://localhost:11434/api/generate",
+            json={
+                "model": request.model,
+                "prompt": request.prompt,
+                "stream": False # True for real-time word streaming
+            }
+        )
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/")
 async def root():
     return {"status": "Vision Services is running", "endpoints": ["/generate-video", "/jax-inference", "/preprocess"]}
