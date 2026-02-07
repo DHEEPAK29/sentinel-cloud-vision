@@ -2,9 +2,20 @@ import torch
 from PIL import Image
 from transformers import CLIPProcessor, CLIPModel
 import io
+from dotenv import load_dotenv
+
+load_dotenv() 
+model_path = os.getenv("MobileCLIP-S0_MODEL_PATH") 
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+if not model_path:
+    raise RuntimeError("CLIP_MODEL_PATH not found in environment.")
+
+model, preprocess = clip.load(model_path, device=device)
 
 class VisualEmbeddingService:
-    def __init__(self, model_name="openai/clip-vit-base-patch32"):
+    def __init__(self, model_name=model):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model = CLIPModel.from_pretrained(model_name).to(self.device)
         self.processor = CLIPProcessor.from_pretrained(model_name)
