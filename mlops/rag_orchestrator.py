@@ -23,8 +23,8 @@ class RAGOrchestrator:
     def __init__(self):
         self.embedder = VisualEmbeddingService()
         # Initialize VectorDB connection
-        # connections.connect("default", host="localhost", port="19530")
-        # self.collection = Collection("visual_events")
+        connections.connect("default", host="localhost", port="19530")
+        self.collection = Collection("visual_events")
 
     async def search_events(self, query_text, top_k=5):
         """
