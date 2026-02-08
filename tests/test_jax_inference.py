@@ -10,9 +10,35 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from edge.jax_train import run_inference
 
 class TestJaxInference(unittest.TestCase):
-    def test_run_inference_success(self):
-        # Create a dummy image
-        img = np.zeros((100, 100, 3), dtype=np.uint8)
+    def __init__(self, target_size=(224, 224)):
+        self.target_size = target_size
+
+    def assess_dimensions(self, image: np.ndarray) -> Dict[str, Any]: 
+        height, width, channels = image.shape
+        aspect_ratio = width / height
+        return {
+            "width": width,
+            "height": height,
+            "channels": channels,
+            "aspect_ratio": aspect_ratio,
+            "pixel_count": width * height
+        }
+
+    def process(self, image: np.ndarray) -> np.ndarray: 
+        processed_img = cv2.resize(image, self.target_size)
+        processed_img = processed_img.astype(np.float32) / 255.0
+        
+        return processed_img
+
+    def test_run_inference_success(self): 
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            
+        if img is None:
+            return {"status": "error", "message": "Failed to decode image"}
+
+        dimensions = self.assess_dimensions(img) 
+        img = self.process(img)
         _, img_encoded = cv2.imencode('.jpg', img)
         image_bytes = img_encoded.tobytes()
         
