@@ -3,10 +3,8 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import udf, col
 from pyspark.sql.types import StructType, StructField, StringType, FloatType, ArrayType
 
-# --- Load Model (Simulated) ---
-# In a real scenario, this would load from TorchServe or MLflow
-# model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
-# model.eval()
+model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
+model.eval()
 
 def perform_inference(image_bytes):
     """
