@@ -1,3 +1,15 @@
+## File Structure
+
+```
+edge/
+├── xla_optimizer.py              # Core XLA optimization engine
+├── optimized_inference.py        # High-performance inference wrapper
+├── benchmark_xla.py              # Comprehensive benchmark suite
+├── XLA_OPTIMIZATION_README.md    # Detailed documentation
+├── jax_train.py                  # JAX training (existing)
+└── vision_module.py              # Vision API (existing)
+```
+
 ### XLA Compilation Pipeline
 
 ```
