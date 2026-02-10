@@ -174,7 +174,7 @@ async def chat_with_llm(request: ChatRequest):
 
 @app.get("/")
 async def root():
-    return {"status": "Vision Services is running", "endpoints": ["/generate-video", "/jax-inference", "/preprocess"]}
+    return {"status": "Vision Services is running", "endpoints": ["/generate-video", "/jax-inference", "/preprocess", "/chat"]}
 
 if __name__ == "__main__":
     import uvicorn
