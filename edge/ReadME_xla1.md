@@ -10,6 +10,18 @@ edge/
 └── vision_module.py              # Vision API (existing)
 ```
 
+## 
+| Technology | Purpose | Version |
+|------------|---------|---------|
+| JAX | High-performance ML framework | 0.4.23 |
+| XLA | Optimizing compiler (LLVM IR) | Built-in |
+| Flax | Neural network library | 0.7.5 |
+| TensorFlow | TFLite conversion | 2.15.0 |
+| tf2onnx | ONNX export | 1.16.1 |
+| ONNX Runtime | Cross-platform inference | 1.16.3 |
+
+---
+
 ### XLA Compilation Pipeline
 
 ```
