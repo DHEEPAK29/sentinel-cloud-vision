@@ -98,3 +98,21 @@ edge/
 │  • ONNX (cross-platform)            │
 └─────────────────────────────────────┘
 ```
+
+
+1. **Multi-GPU Support**
+   - Data parallelism across GPUs
+   - Model parallelism for large models
+
+2. **Dynamic Batching**
+   - Adaptive batch sizing
+   - Latency-aware batching
+
+3. **Model Quantization**
+   - INT8 quantization
+   - Mixed precision (FP16/FP32)
+
+4. **Hardware-Specific Optimization**
+   - TPU optimization
+   - ARM NEON optimization
+   - AVX-512
