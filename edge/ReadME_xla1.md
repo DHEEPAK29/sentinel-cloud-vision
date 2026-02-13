@@ -116,3 +116,18 @@ edge/
    - TPU optimization
    - ARM NEON optimization
    - AVX-512
+
+   
+### Mobile Deployment
+```python
+from xla_config import get_mobile_deployment_config
+config = get_mobile_deployment_config()
+# INT8 quantization, NHWC layout
+```
+
+### GPU Optimized
+```python
+from xla_config import get_gpu_optimized_config
+config = get_gpu_optimized_config()
+# NCHW layout, batch_size=32
+```
