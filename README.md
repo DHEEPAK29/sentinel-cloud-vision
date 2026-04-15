@@ -2,7 +2,6 @@
 
 > **Real-Time Cloud-AI Streaming Engine**: An end-to-end, cloud-native streaming platform for high-frequency visual data ingestion with low-latency AI inference. Built for scale with JAX/XLA optimization achieving **30%+ throughput increase**.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue)
 ![TensorFlow](https://img.shields.io/badge/TensorFlow-2.12+-orange)
 ![JAX](https://img.shields.io/badge/JAX%2FFlax-Latest-purple)
